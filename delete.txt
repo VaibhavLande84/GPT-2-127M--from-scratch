@@ -1,0 +1,43 @@
+import json
+from datasets import load_dataset
+
+# Configuration
+DATASET_NAME = "casperhansen/pmc-oa-markdown"
+OUTPUT_FILE = "pmc_articles.jsonl"
+LIMIT = 50  # Let's start with 50 to make sure it works
+
+print(f"Connecting to {DATASET_NAME}...")
+
+try:
+    # Load with streaming
+    dataset = load_dataset(DATASET_NAME, streaming=True)
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        count = 0
+        for article in dataset["train"]:
+            # Check exactly what keys are available
+            # This version uses 'content' for the body text
+            text_data = article.get("content") or article.get("text") or ""
+            pmid_data = article.get("pmid") or article.get("id") or f"idx_{count}"
+            
+            if not text_data:
+                continue # Skip if empty
+                
+            record = {
+                "pmid": str(pmid_data),
+                "text": text_data
+            }
+            
+            f.write(json.dumps(record) + "\n")
+            
+            count += 1
+            if count % 5 == 0:
+                print(f"Successfully captured {count} articles...")
+            
+            if LIMIT and count >= LIMIT:
+                break
+
+    print(f"\nSUCCESS! Open {OUTPUT_FILE} now. You should see real text.")
+
+except Exception as e:
+    print(f"An error occurred: {e}")
